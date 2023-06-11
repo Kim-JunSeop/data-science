@@ -23,6 +23,7 @@ def train_network():
 
     train(model, network_input, network_output)
 
+
 def get_notes():
     """ Get all the notes and chords from the midi files in the ./midi_songs directory """
     notes = []
@@ -32,21 +33,19 @@ def get_notes():
 
         print("Parsing %s" % file)
 
-        for part in midi.parts:
-            notes_to_parse = None
+        notes_to_parse = None
 
-            try:
-                notes_to_parse = part.recurse()
-            except:
-                notes_to_parse = part.flat.notes
+        try:  # file has instrument parts
+            s2 = instrument.partitionByInstrument(midi)
+            notes_to_parse = s2.parts[0].recurse()
+        except:  # file has notes in a flat structure
+            notes_to_parse = midi.flat.notes
 
-            part_name = part.partName if part.partName is not None else 'Unknown'  # 악기 이름이 없을 경우 'Unknown'으로 설정
-
-            for element in notes_to_parse:
-                if isinstance(element, note.Note):
-                    notes.append(str(element.pitch) + part_name)  # 악기 식별자 추가
-                elif isinstance(element, chord.Chord):
-                    notes.append('.'.join(str(n) for n in element.normalOrder)  + part_name)  # 악기 식별자 추가
+        for element in notes_to_parse:
+            if isinstance(element, note.Note):
+                notes.append(str(element.pitch))
+            elif isinstance(element, chord.Chord):
+                notes.append('.'.join(str(n) for n in element.normalOrder))
 
     with open('data/notes', 'wb') as filepath:
         pickle.dump(notes, filepath)
@@ -54,9 +53,13 @@ def get_notes():
     return notes
 
 
+
 def prepare_sequences(notes, n_vocab):
+
+    print(notes)
+    input()
     """ Prepare the sequences used by the Neural Network """
-    sequence_length = 100
+    sequence_length = 500
 
     # get all pitch names
     pitchnames = sorted(set(item for item in notes))
@@ -118,7 +121,6 @@ def train(model, network_input, network_output):
         verbose=0,
         save_best_only=True,
         mode='min'
-
     )
     callbacks_list = [checkpoint]
 
