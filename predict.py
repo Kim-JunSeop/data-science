@@ -5,10 +5,9 @@ import numpy
 from music21 import instrument, note, stream, chord
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, LSTM, BatchNormalization as BatchNorm, Activation
+
 def generate():
     # Load the trained models for piano and violin
-    piano_model = load_model('weights-improvement-piano-01.hdf5')
-    violin_model = load_model('weights-improvement-violin-01.hdf5')
 
     # Load the notes used to train the models
     with open('data/piano_notes', 'rb') as filepath:
@@ -22,6 +21,9 @@ def generate():
     piano_vocab = len(set(piano_notes))
     violin_vocab = len(set(violin_notes))
 
+    piano_model = load_model('weights-improvement-piano-01.hdf5', piano_vocab)
+    violin_model = load_model('weights-improvement-violin-01.hdf5', violin_vocab)
+
     piano_network_input, piano_normalized_input = prepare_sequences(piano_notes, piano_pitchnames, piano_vocab)
     violin_network_input, violin_normalized_input = prepare_sequences(violin_notes, violin_pitchnames, violin_vocab)
     # Generate notes for piano and violin
@@ -30,7 +32,31 @@ def generate():
     # Create a stream with piano and violin notes
     midi_stream = create_midi(piano_prediction_output, violin_prediction_output)
     # Write the MIDI file
-    midi_stream.write('midi', fp='output.mid')
+    # Create piano and violin MIDI streams
+    piano_stream, violin_stream = create_midi(piano_notes, violin_notes)
+
+    # Write piano stream to MIDI file
+    piano_stream.write('midi', fp='piano.mid')
+
+    # Write violin stream to MIDI file
+    violin_stream.write('midi', fp='violin.mid')
+
+    # ------------------------------------------------------------------------------------------------
+
+    # Combine piano and violin MIDI files into a single file
+    combined_stream = stream.Stream()
+    # Append the piano stream as a separate track to the combined stream
+    piano_track = stream.Stream()
+    piano_track.append(piano_stream)
+    combined_stream.append(piano_track)
+
+    # Append the violin stream as a separate track to the combined stream
+    violin_track = stream.Stream()
+    violin_track.append(violin_stream)
+    combined_stream.append(violin_track)
+
+    combined_stream.write('midi', fp='piano+violin.mid')
+
 def prepare_sequences(notes, pitchnames, n_vocab):
     """ Prepare the sequences used by the Neural Network """
     # Map between notes and integers and back
@@ -49,7 +75,7 @@ def prepare_sequences(notes, pitchnames, n_vocab):
     # Normalize input
     normalized_input = normalized_input / float(n_vocab)
     return (network_input, normalized_input)
-def load_model(model_path):
+def load_model(model_path,n_vocab):
     """ Load the trained model """
     model = Sequential()
     model.add(LSTM(512, input_shape=(100, 1), recurrent_dropout=0.3, return_sequences=True))
@@ -61,14 +87,7 @@ def load_model(model_path):
     model.add(Activation('relu'))
     model.add(BatchNorm())
     model.add(Dropout(0.3))
-    model.add(Dense(128))
-    model.add(Activation('relu'))
-    model.add(BatchNorm())
-    model.add(Dropout(0.3))
-    model.add(Dense(128))
-    model.add(Activation('relu'))
-    model.add(BatchNorm())
-    model.add(Dropout(0.3))
+    model.add(Dense(n_vocab))
     model.add(Activation('softmax'))
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
     # Load the weights
@@ -92,10 +111,18 @@ def generate_notes(model, network_input, pitchnames, n_vocab):
         pattern.append(index)
         pattern = pattern[1:]
     return prediction_output
+
+
 def create_midi(piano_notes, violin_notes):
     """ Create a MIDI stream with piano and violin notes """
+    piano_stream = stream.Stream()
+    violin_stream = stream.Stream()
+    piano_stream.insert(instrument.instrumentFromMidiProgram(0))
+    violin_stream.insert(instrument.instrumentFromMidiProgram(40))
+
     offset = 0
-    output_notes = []
+
+
     # Create piano notes
     for pattern in piano_notes:
         # Pattern is a chord
@@ -108,15 +135,20 @@ def create_midi(piano_notes, violin_notes):
                 notes.append(new_note)
             new_chord = chord.Chord(notes)
             new_chord.offset = offset
-            output_notes.append(new_chord)
+            piano_stream.append(new_chord)
         # Pattern is a note
         else:
             new_note = note.Note(pattern)
             new_note.offset = offset
             new_note.storedInstrument = instrument.Piano()
-            output_notes.append(new_note)
+            piano_stream.append(new_note)
         # Increase offset for piano notes
         offset += 0.5
+
+    offset = 0
+
+
+
     # Create violin notes
     for pattern in violin_notes:
         # Pattern is a chord
@@ -129,17 +161,17 @@ def create_midi(piano_notes, violin_notes):
                 notes.append(new_note)
             new_chord = chord.Chord(notes)
             new_chord.offset = offset
-            output_notes.append(new_chord)
+            violin_stream.append(new_chord)
         # Pattern is a note
         else:
             new_note = note.Note(pattern)
             new_note.offset = offset
             new_note.storedInstrument = instrument.Violin()
-            output_notes.append(new_note)
+            violin_stream.append(new_note)
         # Increase offset for violin notes
         offset += 0.5
-    # Create a MIDI stream
-    midi_stream = stream.Stream(output_notes)
-    return midi_stream
+
+    return piano_stream, violin_stream
+
 if __name__ == '__main__':
     generate()

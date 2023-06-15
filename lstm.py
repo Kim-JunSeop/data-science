@@ -61,9 +61,7 @@ def get_notes():
     with open('data/violin_notes', 'wb') as filepath:
         pickle.dump(violin_notes, filepath)
 
-    print(piano_notes)
-    print(violin_notes)
-    input()
+
 
     return piano_notes, violin_notes
 
@@ -97,10 +95,7 @@ def prepare_sequences(notes, n_vocab):
 
     # convert the output to one-hot encoding
     network_output = np_utils.to_categorical(network_output, num_classes=n_vocab)
-    print(network_input)
-    print('-------------')
-    print(network_output)
-    input()
+
 
     return (network_input,network_output)
 
@@ -142,7 +137,7 @@ def train(model, network_input, network_output, instrument_name):
     )
     callbacks_list = [checkpoint]
     tf.config.run_functions_eagerly(True)
-    model.fit(network_input, network_output, epochs=1, batch_size=32, callbacks=callbacks_list)
+    model.fit(network_input, network_output, epochs=200, batch_size=64, callbacks=callbacks_list)
 
 
 if __name__ == '__main__':
