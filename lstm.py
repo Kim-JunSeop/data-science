@@ -142,7 +142,7 @@ def train(model, network_input, network_output, instrument_name):
     )
     callbacks_list = [checkpoint]
     tf.config.run_functions_eagerly(True)
-    model.fit(network_input, network_output, epochs=200, batch_size=64, callbacks=callbacks_list)
+    model.fit(network_input, network_output, epochs=1, batch_size=32, callbacks=callbacks_list)
 
 
 if __name__ == '__main__':

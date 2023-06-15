@@ -9,8 +9,8 @@ from keras.layers import Dense, Dropout, LSTM, BatchNormalization as BatchNorm, 
 def generate():
     # Load the trained models for piano and violin
     # Name of hdf5 (Piano,Violon)
-    piano_model = load_model('piano_model.hdf5')
-    violin_model = load_model('violin_model.hdf5')
+    piano_model = load_model('weights-improvement-piano-01.hdf5')
+    violin_model = load_model('weights-improvement-violin-01.hdf5')
 
     # Load the notes used to train the models
     with open('data/piano_notes', 'rb') as filepath:
